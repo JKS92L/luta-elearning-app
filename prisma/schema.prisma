@@ -1,3 +1,6 @@
+// ===============================
+// GENERATOR & DATASOURCE
+// ===============================
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,150 +10,586 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ===============================
+// USER MODEL
+// ===============================
 model User {
-  id            String           @id @default(cuid())
-  email         String           @unique
-  name          String?
-  avatar        String?
-  role          UserRole         @default(STUDENT)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  name                 String?
+  avatar               String?
+  role                 UserRole             @default(STUDENT)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
-  studentProfile StudentProfile?
-  teacherProfile TeacherProfile?
-  payments       Payment[]
-  enrollments    ClassEnrollment[]
-  chatSessions   ChatSession[]
-  progress       StudentProgress[]
-  watchHistory   WatchHistory[]
+  // Teacher specific
+  teacherApplication   TeacherApplication?
+  teacherProfile       TeacherProfile?
+
+  // Student specific
+  studentProfile       StudentProfile?
+
+  // Common relationships
+  payments             Payment[]
+  enrollments          ClassEnrollment[]
+  chatSessions         ChatSession[]
+  progress             StudentProgress[]
+  watchHistory         WatchHistory[]
+  sentInvites          TeacherInvite[]      @relation("SentInvites")
+  receivedInvites      TeacherInvite[]      @relation("ReceivedInvites")
+  createdResources     EducationalResource[]
+  createdExamPapers    ExamPaper[]
+  createdBooks         Book[]
+  createdPastPapers    PastPaper[]
+  reviewedApplications TeacherApplication[]  @relation("ApplicationReviewer")
+  createdClasses       Class[]               @relation("ClassCreator")
+  exerciseSubmissions  ExerciseSubmission[]
 
   @@map("users")
 }
 
+// ===============================
+// TEACHER APPLICATION MODEL
+// ===============================
+model TeacherApplication {
+  id              String            @id @default(cuid())
+  userId          String            @unique
+  status          ApplicationStatus @default(PENDING)
+  credentials     Json              // Store uploaded credentials metadata
+  identification  Json              // Store identification documents metadata
+  qualifications  String            // Teacher qualifications
+  experience      String?           // Work experience
+  rejectionReason String?
+  reviewedById    String?           // Admin who reviewed
+  reviewedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
+
+  @@map("teacher_applications")
+}
+
+// ===============================
+// TEACHER PROFILE MODEL
+// ===============================
+model TeacherProfile {
+  id                     String                  @id @default(cuid())
+  userId                 String                  @unique
+  bio                    String?
+  expertise              String?
+  qualifications         String
+  experience             Int?                    // Years of experience
+  levelSpecializations   LevelSpecialization[]
+  subjectSpecializations SubjectSpecialization[]
+  availabilityStatus     Boolean                 @default(true)
+  isVerified             Boolean                 @default(false)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes  ClassTeacher[] // Many-to-many with Class through ClassTeacher
+  chapters Chapter[]      // Chapters created by teacher
+  topics   Topic[]        // Topics created by teacher
+  lessons  Lesson[]       // Lessons created by teacher
+
+  @@map("teacher_profiles")
+}
+
+// ===============================
+// LEVEL SPECIALIZATION MODEL
+// ===============================
+model LevelSpecialization {
+  id        String    @id @default(cuid())
+  teacherId String
+  level     LevelType
+  createdAt DateTime  @default(now())
+
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, level])
+  @@map("level_specializations")
+}
+
+// ===============================
+// SUBJECT SPECIALIZATION MODEL
+// ===============================
+model SubjectSpecialization {
+  id        String   @id @default(cuid())
+  teacherId String
+  subjectId String
+  createdAt DateTime @default(now())
+
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject        @relation(fields: [subjectId], references: [id])
+
+  @@unique([teacherId, subjectId])
+  @@map("subject_specializations")
+}
+
+// ===============================
+// STUDENT PROFILE MODEL
+// ===============================
 model StudentProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  gradeLevel  String?
-  interests   String?
-  createdAt   DateTime @default(now())
+  id         String     @id @default(cuid())
+  userId     String     @unique
+  gradeLevel String?
+  level      LevelType?
+  interests  String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_profiles")
 }
 
-model TeacherProfile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  bio       String?
-  expertise String?
-  createdAt DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classes Class[]
-
-  @@map("teacher_profiles")
-}
-
+// ===============================
+// SUBJECT MODEL
+// ===============================
 model Subject {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   name        String
   description String?
   category    String
-  createdAt   DateTime @default(now())
+  level       LevelType?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  classes Class[]
+  classes              ClassSubject[]          // Many-to-many with Class
+  specializations      SubjectSpecialization[]
+  chapters             Chapter[]
+  examPapers           ExamPaper[]
+  pastPapers           PastPaper[]
+  classTeachers        ClassTeacher[]
+  educationalResources EducationalResource[]
+  books                Book[]
+  TeacherInvite        TeacherInvite[]
 
   @@map("subjects")
 }
 
+// ===============================
+// CLASS MODEL
+// ===============================
 model Class {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  teacherId   String
-  subjectId   String
-  price       Float
-  createdAt   DateTime @default(now())
+  id               String           @id @default(cuid())
+  title            String
+  description      String?
+  level            LevelType
+  grade            String?          // Specific grade within level
+  startsOn         DateTime
+  endsOn           DateTime
+  fee              Float
+  enrollmentStatus EnrollmentStatus @default(STARTING_SOON)
+  publish          Boolean          @default(false)
+  frontPageAd      Boolean          @default(false)
+  advertOn         DateTime?
+  advertEndOn      DateTime?
+  prerequisite     String?
+  coverFileName    String?
+  coverFileDir     String?
+  previewVideoUrl  String?          // Preview thumbnail video
+  createdByUserId  String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  teacher     TeacherProfile @relation(fields: [teacherId], references: [id])
-  subject     Subject        @relation(fields: [subjectId], references: [id])
-  modules     Module[]
-  enrollments ClassEnrollment[]
+  // Relationships
+  createdBy      User              @relation(fields: [createdByUserId], references: [id], name: "ClassCreator")
+  classSubjects  ClassSubject[]    // Many-to-many with Subject
+  classTeachers  ClassTeacher[]    // Many-to-many with TeacherProfile
+  enrollments    ClassEnrollment[]
+  modules        Module[]
+  preview        ClassPreview?     // Class preview information
+  chapters       Chapter[]         // Chapters in this class
+  syllabus       Syllabus?         // Class syllabus
+  teacherInvites TeacherInvite[]
 
   @@map("classes")
 }
 
-model ClassEnrollment {
-  id          String           @id @default(cuid())
-  studentId   String
-  classId     String
-  enrolledAt  DateTime          @default(now())
-  status      EnrollmentStatus  @default(ACTIVE)
+// ===============================
+// CLASS SUBJECT MODEL
+// ===============================
+model ClassSubject {
+  id        String   @id @default(cuid())
+  classId   String
+  subjectId String
+  createdAt DateTime @default(now())
 
-  student     User              @relation(fields: [studentId], references: [id])
-  class       Class             @relation(fields: [classId], references: [id])
-  payment     Payment?
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([classId, subjectId])
+  @@map("class_subjects")
+}
+
+// ===============================
+// CLASS TEACHER MODEL
+// ===============================
+model ClassTeacher {
+  id          String           @id @default(cuid())
+  classId     String
+  teacherId   String
+  subjectId   String
+  status      InvitationStatus @default(PENDING)
+  invitedAt   DateTime         @default(now())
+  respondedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  class   Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id])
+  subject Subject        @relation(fields: [subjectId], references: [id])
+
+  @@unique([classId, teacherId, subjectId])
+  @@map("class_teachers")
+}
+
+// ===============================
+// TEACHER INVITE MODEL
+// ===============================
+model TeacherInvite {
+  id          String           @id @default(cuid())
+  classId     String
+  senderId    String
+  receiverId  String
+  subjectId   String
+  message     String?
+  status      InvitationStatus @default(PENDING)
+  sentAt      DateTime         @default(now())
+  respondedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  class    Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  sender   User    @relation("SentInvites", fields: [senderId], references: [id])
+  receiver User    @relation("ReceivedInvites", fields: [receiverId], references: [id])
+  subject  Subject @relation(fields: [subjectId], references: [id])
+
+  @@map("teacher_invites")
+}
+
+// ===============================
+// CLASS PREVIEW MODEL
+// ===============================
+model ClassPreview {
+  id          String   @id @default(cuid())
+  classId     String   @unique
+  videoUrl    String?  // Preview video
+  description String?
+  highlights  Json?    // Array of highlights/features
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@map("class_previews")
+}
+
+// ===============================
+// SYLLABUS MODEL
+// ===============================
+model Syllabus {
+  id          String   @id @default(cuid())
+  classId     String   @unique
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  chapters Chapter[]
+
+  @@map("syllabus")
+}
+
+// ===============================
+// CHAPTER MODEL
+// ===============================
+model Chapter {
+  id            String   @id @default(cuid())
+  syllabusId    String?
+  classId       String
+  subjectId     String
+  teacherId     String
+  title         String
+  description   String?
+  chapterNumber Int
+  orderIndex    Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  syllabus Syllabus?      @relation(fields: [syllabusId], references: [id])
+  class    Class          @relation(fields: [classId], references: [id])
+  subject  Subject        @relation(fields: [subjectId], references: [id])
+  teacher  TeacherProfile @relation(fields: [teacherId], references: [id])
+  topics   Topic[]
+
+  @@unique([classId, subjectId, chapterNumber])
+  @@map("chapters")
+}
+
+// ===============================
+// TOPIC MODEL
+// ===============================
+model Topic {
+  id          String   @id @default(cuid())
+  chapterId   String
+  teacherId   String
+  title       String
+  description String?
+  topicNumber Int
+  orderIndex  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  chapter Chapter        @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id])
+  lessons Lesson[]
+
+  @@unique([chapterId, topicNumber])
+  @@map("topics")
+}
+
+// ===============================
+// LESSON MODEL
+// ===============================
+model Lesson {
+  id               String   @id @default(cuid())
+  topicId          String
+  teacherId        String
+  title            String
+  description      String?
+  lessonNumber     Int
+  videoUrl         String?
+  duration         Int?     // in seconds
+  orderIndex       Int
+  briefDescription String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  topic           Topic             @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  teacher         TeacherProfile    @relation(fields: [teacherId], references: [id])
+  resources       LessonResource[]
+  exercises       Exercise[]
+  chatSessions    ChatSession[]
+  studentProgress StudentProgress[]
+  watchHistory    WatchHistory[]
+  moduleId        String?
+  module          Module?           @relation(fields: [moduleId], references: [id])
+
+  @@unique([topicId, lessonNumber])
+  @@map("lessons")
+}
+
+// ===============================
+// LESSON RESOURCE MODEL
+// ===============================
+model LessonResource {
+  id        String       @id @default(cuid())
+  lessonId  String
+  title     String
+  fileUrl   String
+  type      ResourceType
+  createdAt DateTime     @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("lesson_resources")
+}
+
+// ===============================
+// EXERCISE MODEL
+// ===============================
+model Exercise {
+  id          String    @id @default(cuid())
+  lessonId    String
+  title       String
+  description String?
+  questions   Json?     // Store exercise questions and answers
+  fileUrl     String?   // Optional PDF file
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  lesson      Lesson               @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  submissions ExerciseSubmission[]
+
+  @@map("exercises")
+}
+
+// ===============================
+// EXERCISE SUBMISSION MODEL
+// ===============================
+model ExerciseSubmission {
+  id          String   @id @default(cuid())
+  exerciseId  String
+  studentId   String
+  answers     Json?    // Student's answers
+  fileUrl     String?  // Submitted file
+  submittedAt DateTime @default(now())
+  grade       Float?
+  feedback    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  student  User     @relation(fields: [studentId], references: [id])
+
+  @@unique([exerciseId, studentId])
+  @@map("exercise_submissions")
+}
+
+// ===============================
+// EDUCATIONAL RESOURCE MODEL
+// ===============================
+model EducationalResource {
+  id              String       @id @default(cuid())
+  title           String
+  description     String?
+  type            ResourceType
+  fileUrl         String
+  price           Float        @default(0)
+  subjectId       String
+  level           LevelType?
+  createdByUserId String
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  createdBy User    @relation(fields: [createdByUserId], references: [id])
+
+  @@map("educational_resources")
+}
+
+// ===============================
+// EXAM PAPER MODEL
+// ===============================
+model ExamPaper {
+  id               String     @id @default(cuid())
+  title            String
+  description      String?
+  subjectId        String
+  level            LevelType?
+  year             Int
+  paperNumber      Int?       // Paper 1, 2, etc.
+  numberOfPapers   Int?       // Total number of papers
+  fileUrl          String
+  markingSchemeUrl String?    // Marking scheme file
+  price            Float      @default(0)
+  createdByUserId  String
+  isActive         Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  createdBy User    @relation(fields: [createdByUserId], references: [id])
+
+  @@map("exam_papers")
+}
+
+// ===============================
+// BOOK MODEL
+// ===============================
+model Book {
+  id              String     @id @default(cuid())
+  title           String
+  author          String?
+  description     String?
+  isbn            String?
+  subjectId       String
+  level           LevelType?
+  fileUrl         String
+  coverImageUrl   String?
+  price           Float      @default(0)
+  createdByUserId String
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  createdBy User    @relation(fields: [createdByUserId], references: [id])
+
+  @@map("books")
+}
+
+// ===============================
+// PAST PAPER MODEL
+// ===============================
+model PastPaper {
+  id              String     @id @default(cuid())
+  title           String
+  description     String?
+  subjectId       String
+  level           LevelType?
+  year            Int
+  paperNumber     Int?       // Paper 1, 2, etc.
+  fileUrl         String
+  createdByUserId String
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  subject         Subject        @relation(fields: [subjectId], references: [id])
+  createdBy       User           @relation(fields: [createdByUserId], references: [id])
+  pastPaperYearId String?
+  pastPaperYear   PastPaperYear? @relation(fields: [pastPaperYearId], references: [id])
+
+  @@unique([subjectId, year, paperNumber])
+  @@map("past_papers")
+}
+
+// ===============================
+// PAST PAPER YEAR MODEL
+// ===============================
+model PastPaperYear {
+  id        String   @id @default(cuid())
+  year      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pastPapers PastPaper[]
+
+  @@map("past_paper_years")
+}
+
+// ===============================
+// CLASS ENROLLMENT MODEL
+// ===============================
+model ClassEnrollment {
+  id               String           @id @default(cuid())
+  studentId        String
+  classId          String
+  enrolledAt       DateTime         @default(now())
+  status           EnrollmentStatus @default(ACTIVE)
+  selectedSubjects Json?            // Store selected subject IDs
+  duration         String?          // Selected duration
+  paymentMethod    String?          // Selected payment method
+
+  student User     @relation(fields: [studentId], references: [id])
+  class   Class    @relation(fields: [classId], references: [id])
+  payment Payment?
 
   @@unique([studentId, classId])
   @@map("class_enrollments")
 }
 
-model Module {
-  id          String   @id @default(cuid())
-  classId     String
-  title       String
-  description String?
-  orderIndex  Int
-  createdAt   DateTime @default(now())
-
-  class   Class   @relation(fields: [classId], references: [id])
-  lessons Lesson[]
-
-  @@map("modules")
-}
-
-model Lesson {
-  id              String   @id @default(cuid())
-  moduleId        String
-  title           String
-  description     String?
-  videoUrl        String
-  duration        Int // in seconds
-  orderIndex      Int
-  createdAt       DateTime @default(now())
-
-  module          Module           @relation(fields: [moduleId], references: [id])
-  resources       LessonResource[]
-  chatSessions    ChatSession[]
-  studentProgress StudentProgress[]
-  watchHistory    WatchHistory[]
-
-  @@map("lessons")
-}
-
-model LessonResource {
-  id        String   @id @default(cuid())
-  lessonId  String
-  title     String
-  fileUrl   String
-  type      ResourceType
-  createdAt DateTime @default(now())
-
-  lesson Lesson @relation(fields: [lessonId], references: [id])
-
-  @@map("lesson_resources")
-}
-
+// ===============================
+// PAYMENT MODEL
+// ===============================
 model Payment {
-  id                     String        @id @default(cuid())
-  studentId              String
-  enrollmentId           String?       @unique   // ✅ must be unique for 1:1 relation
-  amount                 Float
-  currency               String        @default("USD")
-  status                 PaymentStatus @default(PENDING)
-  stripePaymentIntentId  String?
-  createdAt              DateTime      @default(now())
+  id                    String        @id @default(cuid())
+  studentId             String
+  enrollmentId          String?       @unique
+  resourceId            String?       // For resource purchases
+  resourceType          String?       // 'exam', 'book', 'resource'
+  amount                Float
+  currency              String        @default("USD")
+  status                PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?
+  paymentMethod         String?
+  createdAt             DateTime      @default(now())
 
   student    User             @relation(fields: [studentId], references: [id])
   enrollment ClassEnrollment? @relation(fields: [enrollmentId], references: [id])
@@ -158,6 +597,27 @@ model Payment {
   @@map("payments")
 }
 
+// ===============================
+// MODULE MODEL
+// ===============================
+model Module {
+  id          String   @id @default(cuid())
+  classId     String
+  title       String
+  description String?
+  orderIndex  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  class   Class    @relation(fields: [classId], references: [id])
+  lessons Lesson[]
+
+  @@map("modules")
+}
+
+// ===============================
+// CHAT SESSION MODEL
+// ===============================
 model ChatSession {
   id        String   @id @default(cuid())
   studentId String
@@ -166,33 +626,39 @@ model ChatSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  student   User          @relation(fields: [studentId], references: [id])
-  lesson    Lesson        @relation(fields: [lessonId], references: [id])
-  messages  ChatMessage[]
+  student  User          @relation(fields: [studentId], references: [id])
+  lesson   Lesson        @relation(fields: [lessonId], references: [id])
+  messages ChatMessage[]
 
   @@map("chat_sessions")
 }
 
+// ===============================
+// CHAT MESSAGE MODEL
+// ===============================
 model ChatMessage {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   sessionId String
   role      MessageRole
   content   String
   metadata  Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
 
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@map("chat_messages")
 }
 
+// ===============================
+// STUDENT PROGRESS MODEL
+// ===============================
 model StudentProgress {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   studentId          String
   lessonId           String
-  progressPercentage Float    @default(0)
+  progressPercentage Float     @default(0)
   completedAt        DateTime?
-  lastWatchedAt      DateTime @default(now())
+  lastWatchedAt      DateTime  @default(now())
 
   student User   @relation(fields: [studentId], references: [id])
   lesson  Lesson @relation(fields: [lessonId], references: [id])
@@ -201,6 +667,9 @@ model StudentProgress {
   @@map("student_progress")
 }
 
+// ===============================
+// WATCH HISTORY MODEL
+// ===============================
 model WatchHistory {
   id               String   @id @default(cuid())
   studentId        String
@@ -214,13 +683,30 @@ model WatchHistory {
   @@map("watch_history")
 }
 
+// ===============================
+// ENUMS
+// ===============================
 enum UserRole {
   STUDENT
   TEACHER
   ADMIN
+  GUEST
+  CONTENT_CREATOR
+  GENERAL_USER
+}
+
+enum LevelType {
+  PRIMARY
+  JUNIOR
+  SENIOR
+  COLLEGE
+  SKILLS
 }
 
 enum EnrollmentStatus {
+  CLOSED
+  IN_PROGRESS
+  STARTING_SOON
   ACTIVE
   INACTIVE
   COMPLETED
@@ -239,9 +725,24 @@ enum ResourceType {
   IMAGE
   LINK
   DOCUMENT
+  EXERCISE
+  EXAM
+  BOOK
 }
 
 enum MessageRole {
   USER
   ASSISTANT
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
