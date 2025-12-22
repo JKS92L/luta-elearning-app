@@ -9,7 +9,7 @@ import { ThemeProvider } from "next-themes";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LutaNgu - Transform Your Learning Journey",
+  title: "Luta-App - Transform Your Learning Journey",
   description: "Interactive e-learning platform with AI-powered tutoring",
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
-          enableSystem={false}
+          enableSystem={true}
         >
           <TooltipProvider>
             <div className="min-h-screen flex flex-col bg-background text-foreground">

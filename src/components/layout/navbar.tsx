@@ -18,6 +18,11 @@ import {
   MessageCircle,
   Sun,
   Moon,
+  Camera,
+  Clapperboard,
+  Zap,
+  SquareActivity,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,9 +58,15 @@ const useUser = () => {
 };
 
 const navigationItems = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "My Classes", href: "/classes", icon: BookOpen },
-  { name: "Courses", href: "/browse", icon: Video },
+  { name: "Home", href: "/", icon: Home }, // for logout users
+  { name: "Featured Classes", href: "/featured-classes", icon: Camera }, // for logout users
+  { name: "Latest Classes", href: "/latest-classes", icon: Zap }, // for logout users
+  { name: "Trending Classes", href: "/trending-classes", icon: SquareActivity }, // for logout users
+  { name: "Popular Classes", href: "/popular-classes", icon: Activity }, // for logout users <Activity />
+  { name: "My Classes", href: "/classes", icon: BookOpen },//for logged in users
+  { name: "Explore", href: "/explore", icon: Video },//for logged in users
+  {name: "Become a Teacher", href: "/teacher-apply", icon: BookOpen },//for logged in users
+  { name: "Free Lessons", href: "/free-lessons", icon: Clapperboard },//for logged in users
 ];
 
 const userNavigation = [
@@ -122,7 +133,7 @@ export function Navbar() {
             <Link href="/" className="flex items-center space-x-2">
               <div className="text-2xl font-extrabold tracking-wide">
                 <span className="text-red-600">Luta</span>
-                <span className="text-white">Ngu</span>
+                <span className="text-white">App</span>
               </div>
             </Link>
 
@@ -330,7 +341,7 @@ function MobileNavigation() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-red-700">
-        <div className="text-xl font-bold text-red-500">LutaNgu</div>
+        <div className="text-xl font-bold text-red-500">Luta App</div>
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
