@@ -16,35 +16,37 @@ interface TabsProps {
 interface TabContentProps {
   id: string;
   children: React.ReactNode;
+  className?: string;
 }
 
 export function Tabs({ tabs, defaultTab, children }: TabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
 
-  const contents = React.Children.toArray(children).reduce(
-    (acc, child: any) => {
-      if (child.type?.displayName === "TabContent") {
-        acc[child.props.id] = child.props.children;
-      }
+  // Filter and map children to tab contents
+  const tabContents = React.Children.toArray(children)
+    .filter(
+      (child): child is React.ReactElement<TabContentProps> =>
+        React.isValidElement(child) && child.type === TabContent
+    )
+    .reduce((acc, child) => {
+      acc[child.props.id] = child.props.children;
       return acc;
-    },
-    {} as Record<string, React.ReactNode>
-  );
+    }, {} as Record<string, React.ReactNode>);
 
   return (
-    <div className="w-full">
-      {/* Header */}
+    <div className="flex flex-col h-full">
+      {/* Tab Headers */}
       <div className="border-b border-border">
-        <div className="flex space-x-8">
+        <div className="flex overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2",
+                "py-4 px-4 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0",
                 activeTab === tab.id
                   ? "border-red-500 text-red-600 dark:text-red-400"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
               {tab.icon}
@@ -54,15 +56,26 @@ export function Tabs({ tabs, defaultTab, children }: TabsProps) {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="py-4">{contents[activeTab]}</div>
+      {/* Tab Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="min-h-full">
+          {tabContents[activeTab] || (
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              No content available
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-function TabContent({ id, children }: TabContentProps) {
-  return <>{children}</>;
+function TabContent({ id, children, className }: TabContentProps) {
+  return (
+    <div id={`tab-${id}`} role="tabpanel" className={cn("h-full", className)}>
+      {children}
+    </div>
+  );
 }
-TabContent.displayName = "TabContent";
 
 Tabs.Content = TabContent;

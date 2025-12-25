@@ -15,7 +15,7 @@ export function Footer() {
               <span className="bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">
                 Luta
               </span>
-              <span className="text-foreground">App</span>
+              <span className="text-foreground">ZedApp</span>
               <span className="text-muted-foreground text-sm sm:ml-2 font-medium">
                 E-learning Platform
               </span>
@@ -124,7 +124,7 @@ export function Footer() {
             <span className="bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent font-semibold">
               Luta
             </span>
-            <span className="text-foreground font-semibold">App</span>. All
+            <span className="text-foreground font-semibold">ZedApp</span>. All
             rights reserved.
           </p>
 
