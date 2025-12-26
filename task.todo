@@ -3,3 +3,13 @@
 - [ ] Implement login system and auth features and pages
 - [ ] Create logged in pages and features
 - [ ] Create classes modals, chapters, topics, lesson titles, videos and documents to the db
+
+
+
+npx drizzle-kit generate
+npx drizzle-kit migrate
+npx drizzle-kit push
+npx drizzle-kit pull
+npx drizzle-kit check
+npx drizzle-kit up
+npx drizzle-kit studio
