@@ -1,8 +1,7 @@
 # My Project Tasks
 
-- [ ] Implement login system and auth features and pages
-- [ ] Create logged in pages and features
-- [ ] Create classes modals, chapters, topics, lesson titles, videos and documents to the db
+- [ ] Implement Google auth and other providers by BETTER AUTH 
+
 
 
 
