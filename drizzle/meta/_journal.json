@@ -8,6 +8,20 @@
       "when": 1766781660541,
       "tag": "20251226204100_square_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1767519708197,
+      "tag": "20260104094148_lucky_swarm",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767521904214,
+      "tag": "20260104101824_misty_captain_stacy",
+      "breakpoints": true
     }
   ]
 }

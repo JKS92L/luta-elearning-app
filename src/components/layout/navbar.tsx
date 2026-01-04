@@ -381,21 +381,25 @@ export function Navbar() {
             ) : (
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={handleLoginClick}
+                 
                   variant="ghost"
                   size="sm"
                   className="text-gray-300 hover:text-red-500 hover:bg-red-500/10 transition-all"
                 >
                   <LogIn className="h-4 w-4" />
-                  <span className="hidden sm:inline">Login</span>
+                  <span className="hidden sm:inline">
+                    <Link href="/login">Login</Link>
+                  </span>
                 </Button>
                 <Button
-                  onClick={handleSignupClick}
+                  
                   size="sm"
                   className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-md shadow-lg hover:shadow-red-500/25 transition-all"
                 >
                   <UserPlus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Sign Up</span>
+                  <span className="hidden sm:inline">
+                    <Link href="/signup">Sign Up</Link>
+                  </span>
                 </Button>
               </div>
             )}
