@@ -1,10 +1,12 @@
+// src/lib/auth.ts
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "./db"; // your drizzle instance
+import { db } from "./db";
+import { customSession } from "better-auth/plugins";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'pg', // or "mysql", "sqlite"
+    provider: 'pg',
   }),
   emailAndPassword: {
     enabled: true,
@@ -21,4 +23,15 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
     },
   },
-})
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    updateAge: 60 * 60 * 24, // 1 day - refresh expiration daily
+    freshAge: 60 * 60 * 24, // 1 day - session is fresh for 1 day
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60, // 5 minutes cache duration
+      strategy: "compact", // or "jwt" or "jwe"
+    },
+  },
+ 
+});

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   Video,
@@ -18,7 +18,6 @@ import {
   MessageCircle,
   Sun,
   Moon,
-  Camera,
   Clapperboard,
   Zap,
   SquareActivity,
@@ -51,21 +50,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
-//src/app/providers/auth-provider.tsx
 import { useAuth } from "@/providers/auth-provider";
-
-// Mock user data - replace with actual auth context later
-const useUser = () => {
-  return {
-    user: {
-      name: "John Doe",
-      email: "john@example.com",
-      avatar: "",
-      role: "student",
-    },
-    isLoggedIn: false, // Change this to true to test logged in state
-  };
-};
 
 // Navigation items for logged-out users (public pages)
 const loggedOutNavigation = [
@@ -82,7 +67,7 @@ const loggedInNavigation = [
   { name: "My Classes", href: "/classes", icon: BookOpen },
   { name: "Explore", href: "/explore", icon: Video },
   { name: "Free Lessons", href: "/free-lessons", icon: Clapperboard },
-  { name: "Become a Teacher", href: "/teacher-apply", icon: User },
+  { name: "Become a Member", href: "/member-apply", icon: User },
   { name: "Calendar", href: "/calendar", icon: CalendarDays },
 ];
 
@@ -96,29 +81,54 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [screenSize, setScreenSize] = useState<"mobile" | "tablet" | "desktop">("desktop");
   const { setTheme, theme } = useTheme();
   const pathname = usePathname();
-  const { user, isLoggedIn } = useUser();
-
-  // Get the auth context to show login/signup modals
-  const { showLogin, showSignup } = useAuth();
+  const router = useRouter();
+  
+  // Sign/ signout with Better Auth
+  const { user, isLoading, signOut, signInWithGoogle, signInWithGithub } = useAuth();
+  const isLoggedIn = !!user;
 
   // Get appropriate navigation items based on login status
   const navigationItems = isLoggedIn ? loggedInNavigation : loggedOutNavigation;
 
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user?.name) return "U";
+    return user.name
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   // Detect client mount to avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
+    updateScreenSize();
+    
+    const handleResize = () => {
+      updateScreenSize();
+    };
+    
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const updateScreenSize = () => {
+    const width = window.innerWidth;
+    if (width < 768) {
+      setScreenSize("mobile");
+    } else if (width < 1024) {
+      setScreenSize("tablet");
+    } else {
+      setScreenSize("desktop");
+    }
+  };
 
   // Handle scroll background effect - Netflix style
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Handle Netflix-inspired scroll effect with gradient
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
@@ -136,25 +146,39 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Handle auth button clicks - close sheet and open modal
-  const handleLoginClick = () => {
-    setSheetOpen(false); // Close the mobile sheet
-    showLogin(); // Open login modal
+  const handleSignOut = async () => {
+    await signOut();
+    setSheetOpen(false);
   };
 
-  const handleSignupClick = () => {
-    setSheetOpen(false); // Close the mobile sheet
-    showSignup(); // Open signup modal
+  const handleLogin = () => {
+    setSheetOpen(false);
+    router.push('/login');
   };
 
-  if (!mounted) {
-    // Avoid rendering theme-dependent UI before hydration
+  const handleSignup = () => {
+    setSheetOpen(false);
+    router.push('/signup');
+  };
+
+  if (!mounted || isLoading) {
+    // Show skeleton while loading
     return (
       <header className="sticky top-0 z-50 w-full bg-black border-b border-red-600/30">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
-            <div className="w-32 h-8 bg-gray-800 rounded animate-pulse"></div>
-            <div className="w-40 h-8 bg-gray-800 rounded animate-pulse"></div>
+            <div className="flex items-center gap-6">
+              <div className="w-32 h-8 bg-gray-800 rounded animate-pulse"></div>
+              <div className="hidden md:flex gap-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="w-20 h-8 bg-gray-800 rounded animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gray-800 rounded-full animate-pulse"></div>
+              <div className="w-24 h-8 bg-gray-800 rounded animate-pulse"></div>
+            </div>
           </div>
         </div>
       </header>
@@ -173,37 +197,40 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Left side */}
           <div className="flex items-center gap-6">
-            {/* Mobile menu */}
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="md:hidden text-white hover:bg-red-600/20 hover:text-red-500 transition-all"
-                  aria-label="Open menu"
+            {/* Mobile menu - shown on mobile only */}
+            {screenSize === "mobile" && (
+              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-red-600/20 hover:text-red-500 transition-all"
+                    aria-label="Open menu"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent
+                  side="left"
+                  className="w-64 bg-black text-white border-r border-red-700/50 sm:w-72"
                 >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-64 bg-black text-white border-r border-red-700/50"
-              >
-                <VisuallyHidden>
-                  <SheetTitle>Navigation Menu</SheetTitle>
-                </VisuallyHidden>
-                <MobileNavigation
-                  isLoggedIn={isLoggedIn}
-                  user={user}
-                  onLoginClick={handleLoginClick}
-                  onSignupClick={handleSignupClick}
-                  onCloseSheet={() => setSheetOpen(false)}
-                />
-              </SheetContent>
-            </Sheet>
+                  <VisuallyHidden>
+                    <SheetTitle>Navigation Menu</SheetTitle>
+                  </VisuallyHidden>
+                  <MobileNavigation
+                    user={user}
+                    isLoggedIn={isLoggedIn}
+                    onLoginClick={handleLogin}
+                    onSignupClick={handleSignup}
+                    onSignOutClick={handleSignOut}
+                    onCloseSheet={() => setSheetOpen(false)}
+                  />
+                </SheetContent>
+              </Sheet>
+            )}
 
             {/* Brand - Netflix inspired */}
-            <Link href="/" className="flex items-center space-x-2 group">
+            <Link href="/" className="flex items-center space-x-2 group flex-shrink-0">
               <div className="text-2xl font-extrabold tracking-wide">
                 <span className="text-red-600 group-hover:text-red-500 transition-colors">
                   Luta
@@ -212,43 +239,64 @@ export function Navbar() {
                   ZedApp
                 </span>
               </div>
-              <span className="text-xs text-red-500 font-semibold bg-red-500/10 px-2 py-1 rounded-full">
-                BETA
-              </span>
             </Link>
 
-            {/* Desktop nav - only show appropriate items */}
-            <nav className="hidden md:flex items-center space-x-1">
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
+            {/* Desktop/Tablet nav - Show ALL items */}
+            {screenSize !== "mobile" && (
+              <nav className="hidden md:flex items-center space-x-1">
+                <TooltipProvider delayDuration={300}>
+                  {navigationItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    
+                    // On tablet, show icon only with tooltip
+                    const isTablet = screenSize === "tablet";
 
-                return (
-                  <Button
-                    key={item.name}
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className={`text-sm flex items-center gap-2 transition-all duration-200 ${
-                      isActive
-                        ? "text-red-500 font-semibold bg-red-500/10"
-                        : "text-gray-300 hover:text-red-500 hover:bg-red-500/10"
-                    }`}
-                  >
-                    <Link href={item.href}>
-                      <Icon className="h-4 w-4" />
-                      <span>{item.name}</span>
-                    </Link>
-                  </Button>
-                );
-              })}
-            </nav>
+                    return (
+                      <Tooltip key={item.name}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            className={`flex items-center gap-2 transition-all duration-200 ${
+                              isTablet 
+                                ? "px-3 h-10 w-10 justify-center" 
+                                : "px-3 h-9"
+                            } ${
+                              isActive
+                                ? "text-red-500 font-semibold bg-red-500/10"
+                                : "text-gray-300 hover:text-red-500 hover:bg-red-500/10"
+                            }`}
+                          >
+                            <Link href={item.href}>
+                              <Icon className="h-5 w-5" />
+                              {!isTablet && (
+                                <span className="text-sm">{item.name}</span>
+                              )}
+                            </Link>
+                          </Button>
+                        </TooltipTrigger>
+                        {isTablet && (
+                          <TooltipContent 
+                            side="bottom" 
+                            className="bg-black border-red-600 text-white animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+                          >
+                            <p>{item.name}</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    );
+                  })}
+                </TooltipProvider>
+              </nav>
+            )}
           </div>
 
           {/* Right side */}
           <div className="flex items-center gap-2">
             {/* Show messages only for logged-in users */}
-            {isLoggedIn && (
+            {isLoggedIn && screenSize !== "mobile" && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -256,8 +304,11 @@ export function Navbar() {
                       variant="ghost"
                       size="icon"
                       className="text-gray-300 hover:text-red-500 hover:bg-red-500/10"
+                      asChild
                     >
-                      <MessageCircle className="h-5 w-5" />
+                      <Link href="/messages">
+                        <MessageCircle className="h-5 w-5" />
+                      </Link>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black border-red-600 text-white">
@@ -268,7 +319,7 @@ export function Navbar() {
             )}
 
             {/* Show notifications only for logged-in users */}
-            {isLoggedIn && (
+            {isLoggedIn && screenSize !== "mobile" && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -276,11 +327,14 @@ export function Navbar() {
                       variant="ghost"
                       size="icon"
                       className="relative text-gray-300 hover:text-red-500 hover:bg-red-500/10"
+                      asChild
                     >
-                      <Bell className="h-5 w-5" />
-                      <Badge className="absolute -top-1 -right-1 bg-red-600 text-white text-xs h-5 w-5 p-0 flex items-center justify-center border border-black">
-                        3
-                      </Badge>
+                      <Link href="/notifications">
+                        <Bell className="h-5 w-5" />
+                        <Badge className="absolute -top-1 -right-1 bg-red-600 text-white text-xs h-5 w-5 p-0 flex items-center justify-center border border-black">
+                          3
+                        </Badge>
+                      </Link>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-black border-red-600 text-white">
@@ -324,12 +378,9 @@ export function Navbar() {
                     className="relative h-8 w-8 rounded-full hover:ring-2 hover:ring-red-500 transition-all"
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarImage src={user?.image || ""} alt={user?.name || "User"} />
                       <AvatarFallback className="bg-gradient-to-br from-red-600 to-red-800 text-white">
-                        {user.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
+                        {getUserInitials()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -341,12 +392,13 @@ export function Navbar() {
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-semibold text-white">
-                        {user.name}
+                        {user?.name || "User"}
                       </p>
-                      <p className="text-xs text-gray-400">{user.email}</p>
+                      <p className="text-xs text-gray-400">{user?.email || ""}</p>
                       <div className="flex items-center gap-1">
                         <span className="text-xs px-2 py-0.5 bg-red-600/20 text-red-400 rounded-full">
-                          {user.role}
+                          {user?.role || "student"}
+                           
                         </span>
                       </div>
                     </div>
@@ -372,7 +424,10 @@ export function Navbar() {
                     );
                   })}
                   <DropdownMenuSeparator className="bg-red-900/50" />
-                  <DropdownMenuItem className="flex items-center gap-2 text-red-500 hover:bg-red-600/20 hover:text-red-400 cursor-pointer">
+                  <DropdownMenuItem 
+                    onClick={handleSignOut}
+                    className="flex items-center gap-2 text-red-500 hover:bg-red-600/20 hover:text-red-400 cursor-pointer"
+                  >
                     <LogOut className="h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>
@@ -380,27 +435,54 @@ export function Navbar() {
               </DropdownMenu>
             ) : (
               <div className="flex items-center gap-2">
-                <Button
-                 
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-300 hover:text-red-500 hover:bg-red-500/10 transition-all"
-                >
-                  <LogIn className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    <Link href="/login">Login</Link>
-                  </span>
-                </Button>
-                <Button
-                  
-                  size="sm"
-                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-md shadow-lg hover:shadow-red-500/25 transition-all"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    <Link href="/signup">Sign Up</Link>
-                  </span>
-                </Button>
+                {screenSize !== "mobile" && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size={screenSize === "tablet" ? "icon" : "sm"}
+                          className={`text-gray-300 hover:text-red-500 hover:bg-red-500/10 transition-all ${
+                            screenSize === "tablet" ? "h-9 w-9" : ""
+                          }`}
+                          onClick={handleLogin}
+                        >
+                          <LogIn className="h-4 w-4" />
+                          {screenSize === "desktop" && (
+                            <span>Login</span>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      {screenSize === "tablet" && (
+                        <TooltipContent className="bg-black border-red-600 text-white">
+                          <p>Login</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size={screenSize === "tablet" ? "icon" : "sm"}
+                        className={`bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-md shadow-lg hover:shadow-red-500/25 transition-all ${
+                          screenSize === "tablet" ? "h-9 w-9" : ""
+                        }`}
+                        onClick={handleSignup}
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        {screenSize === "desktop" && <span>Sign Up</span>}
+                        {screenSize === "mobile" && <span className="sr-only">Sign Up</span>}
+                      </Button>
+                    </TooltipTrigger>
+                    {screenSize === "tablet" && (
+                      <TooltipContent className="bg-black border-red-600 text-white">
+                        <p>Sign Up</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             )}
           </div>
@@ -411,22 +493,20 @@ export function Navbar() {
 }
 
 interface MobileNavigationProps {
+  user: any;
   isLoggedIn: boolean;
-  user: {
-    name: string;
-    email: string;
-    avatar: string;
-  };
   onLoginClick: () => void;
   onSignupClick: () => void;
+  onSignOutClick: () => void;
   onCloseSheet: () => void;
 }
 
 function MobileNavigation({
-  isLoggedIn,
   user,
+  isLoggedIn,
   onLoginClick,
   onSignupClick,
+  onSignOutClick,
   onCloseSheet,
 }: MobileNavigationProps) {
   const pathname = usePathname();
@@ -436,6 +516,16 @@ function MobileNavigation({
     ...navigationItems,
     ...(isLoggedIn ? userNavigation : []),
   ];
+
+  const getUserInitials = () => {
+    if (!user?.name) return "U";
+    return user.name
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -461,8 +551,7 @@ function MobileNavigation({
                     : "text-gray-300 hover:text-red-500 hover:bg-red-500/10"
                 }`}
                 onClick={() => {
-                  // Small delay to allow sheet animation before navigation
-                  setTimeout(() => onCloseSheet(), 100);
+                  onCloseSheet();
                 }}
               >
                 <Link href={item.href}>
@@ -481,19 +570,16 @@ function MobileNavigation({
           <>
             <div className="flex items-center gap-3 mb-3 p-2 rounded-lg bg-red-500/5">
               <Avatar>
-                <AvatarImage src={user.avatar} />
+                <AvatarImage src={user?.image || ""} />
                 <AvatarFallback className="bg-gradient-to-br from-red-600 to-red-800 text-white">
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
+                  {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-white">
-                  {user.name}
+                  {user?.name || "User"}
                 </span>
-                <span className="text-xs text-gray-400">{user.email}</span>
+                <span className="text-xs text-gray-400">{user?.email || ""}</span>
               </div>
             </div>
             <SheetClose asChild>
@@ -501,9 +587,8 @@ function MobileNavigation({
                 variant="outline"
                 className="w-full text-red-500 border-red-700/50 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all"
                 onClick={() => {
-                  // Close sheet and trigger sign out
                   onCloseSheet();
-                  // Add your sign out logic here
+                  onSignOutClick();
                 }}
               >
                 <LogOut className="h-4 w-4 mr-2" />
