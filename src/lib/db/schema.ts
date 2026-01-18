@@ -1,6 +1,10 @@
 import { relations } from "drizzle-orm";
 import { pgTable,pgEnum, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
+// ===============================
+// ENUMS
+// ===============================
+
 export const userRoleEnum = pgEnum("user_role", [
   // SYSTEM ROLES
   "SYSTEM_ADMIN",
@@ -19,6 +23,57 @@ export const userRoleEnum = pgEnum("user_role", [
   "OTHER",
 ]);
 export type UserRole = (typeof userRoleEnum.enumValues)[number]
+
+
+export const levelTypeEnum = pgEnum("level_type", [
+  "PRIMARY",
+  "JUNIOR",
+  "SENIOR",
+  "COLLEGE",
+  "SKILLS",
+]);
+
+export const enrollmentStatusEnum = pgEnum("enrollment_status", [
+  "CLOSED",
+  "IN_PROGRESS",
+  "STARTING_SOON",
+  "ACTIVE",
+  "INACTIVE",
+  "COMPLETED",
+]);
+
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "PENDING",
+  "COMPLETED",
+  "FAILED",
+  "REFUNDED",
+]);
+
+export const resourceTypeEnum = pgEnum("resource_type", [
+  "PDF",
+  "VIDEO",
+  "IMAGE",
+  "LINK",
+  "DOCUMENT",
+  "EXERCISE",
+  "EXAM",
+  "BOOK",
+]);
+
+export const messageRoleEnum = pgEnum("message_role", ["USER", "ASSISTANT"]);
+
+export const applicationStatusEnum = pgEnum("application_status", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);
+
+export const invitationStatusEnum = pgEnum("invitation_status", [
+  "PENDING",
+  "ACCEPTED",
+  "REJECTED",
+]);
+
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
