@@ -397,7 +397,7 @@ export function Navbar() {
                       <p className="text-xs text-gray-400">{user?.email || ""}</p>
                       <div className="flex items-center gap-1">
                         <span className="text-xs px-2 py-0.5 bg-red-600/20 text-red-400 rounded-full">
-                          {user?.role || "student"}
+                          {user?.role || "GENERAL_USER"}
                            
                         </span>
                       </div>
