@@ -31,11 +31,14 @@ CREATE TABLE "session" (
 CREATE TABLE "subjects" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
+	"short_tag" text NOT NULL,
+	"code" text NOT NULL,
 	"description" text,
 	"category" text NOT NULL,
 	"level" "level_type",
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "subjects_code_unique" UNIQUE("code")
 );
 --> statement-breakpoint
 CREATE TABLE "user" (
@@ -63,7 +66,6 @@ ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "account_user_id_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "session_user_id_idx" ON "session" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "subject_name_idx" ON "subjects" USING btree ("name");--> statement-breakpoint
-CREATE INDEX "subject_category_idx" ON "subjects" USING btree ("category");--> statement-breakpoint
-CREATE INDEX "subject_level_idx" ON "subjects" USING btree ("level");--> statement-breakpoint
+CREATE UNIQUE INDEX "short_tag_idx" ON "subjects" USING btree ("short_tag");--> statement-breakpoint
+CREATE UNIQUE INDEX "code_idx" ON "subjects" USING btree ("code");--> statement-breakpoint
 CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("identifier");

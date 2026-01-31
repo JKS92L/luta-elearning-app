@@ -34,4 +34,13 @@ export const auth = betterAuth({
       strategy: "compact", // or "jwt" or "jwe"
     },
   },
+  user: {
+    additionalFields: {
+      // Ensure role is included in the user object
+      role: {
+        type: "string",
+        required: true,
+      },
+    },
+  },
 });

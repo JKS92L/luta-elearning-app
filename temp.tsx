@@ -299,6 +299,8 @@ export const subjects = pgTable("subjects", {
     .primaryKey()
     .$defaultFn(() => createId()),
   name: text("name").notNull(),
+  short_tag: text("short_tag"),
+  code: text("code"), 
   description: text("description"),
   category: text("category").notNull(),
   level: levelTypeEnum("level"),

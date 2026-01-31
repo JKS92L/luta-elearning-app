@@ -134,7 +134,7 @@ export function LoginModal({
                       currentTheme === "dark" ? "text-white" : "text-gray-900"
                     )}
                   >
-                    ZedApp
+                    Zed
                   </span>
                 </div>
                 <div className="absolute -top-2 -right-2">

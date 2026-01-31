@@ -124,7 +124,7 @@ export function SignupModal({
                       currentTheme === "dark" ? "text-white" : "text-gray-900"
                     )}
                   >
-                    ZedApp
+                    Zed
                   </span>
                 </div>
                 <Sparkles className="absolute -top-2 -right-4 h-5 w-5 text-yellow-400 animate-pulse" />

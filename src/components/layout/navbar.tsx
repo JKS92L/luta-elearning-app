@@ -236,7 +236,7 @@ export function Navbar() {
                   Luta
                 </span>
                 <span className="text-white group-hover:text-gray-300 transition-colors">
-                  ZedApp
+                  Zed
                 </span>
               </div>
             </Link>
@@ -397,7 +397,7 @@ export function Navbar() {
                       <p className="text-xs text-gray-400">{user?.email || ""}</p>
                       <div className="flex items-center gap-1">
                         <span className="text-xs px-2 py-0.5 bg-red-600/20 text-red-400 rounded-full">
-                          {user?.role || "GENERAL_USER"}
+                          {user?.role || "ROLE UNKNOWN"}
                            
                         </span>
                       </div>
@@ -530,7 +530,7 @@ function MobileNavigation({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-red-700/50">
-        <div className="text-xl font-bold text-red-500">Luta ZedApp</div>
+        <div className="text-xl font-bold text-red-500">Luta Zed</div>
         <span className="text-xs text-red-500/70 font-semibold bg-red-500/10 px-2 py-1 rounded-full">
           {isLoggedIn ? "PREMIUM" : "FREE"}
         </span>

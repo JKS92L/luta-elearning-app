@@ -1,5 +1,13 @@
 // schema.ts
-import { pgTable, text, timestamp, boolean, index, pgEnum } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  index,
+  pgEnum,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
@@ -19,13 +27,12 @@ export const UserRole = {
   CLASS_LEAD: "CLASS_LEAD",
   SYSTEM_DEVELOPER: "SYSTEM_DEVELOPER",
   CUSTOMER_RELATION: "CUSTOMER_RELATION",
-
 } as const;
 
 // Level types enum
 export const LevelType = {
   PRIMARY: "PRIMARY",
-  JUNIOR: "JUNIOR", 
+  JUNIOR: "JUNIOR",
   SENIOR: "SENIOR",
   COLLEGE: "COLLEGE",
   SKILLS: "SKILLS",
@@ -45,10 +52,12 @@ export const levelTypeEnum = pgEnum("level_type", enumValues(LevelType));
 
 // 1. USER TABLE - Add role field
 export const user = pgTable("user", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  role: userRoleEnum("role").notNull().default(UserRole.GENERAL_USER), 
+  role: userRoleEnum("role").notNull().default(UserRole.GENERAL_USER),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -62,7 +71,9 @@ export const user = pgTable("user", {
 export const session = pgTable(
   "session",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
     expiresAt: timestamp("expires_at").notNull(),
     token: text("token").notNull().unique(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -75,14 +86,16 @@ export const session = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
   },
-  (table) => [index("session_user_id_idx").on(table.userId)]
+  (table) => [index("session_user_id_idx").on(table.userId)],
 );
 
 // 3. ACCOUNT TABLE (Keep as is)
 export const account = pgTable(
   "account",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
     userId: text("user_id")
@@ -100,14 +113,16 @@ export const account = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("account_user_id_idx").on(table.userId)]
+  (table) => [index("account_user_id_idx").on(table.userId)],
 );
 
 // 4. VERIFICATION TABLE (Keep as is)
 export const verification = pgTable(
   "verification",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
     expiresAt: timestamp("expires_at").notNull(),
@@ -117,7 +132,7 @@ export const verification = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)]
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
 // ===============================
@@ -127,22 +142,23 @@ export const verification = pgTable(
 export const subjects = pgTable(
   "subjects",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
     name: text("name").notNull(),
+    short_tag: text("short_tag").notNull(),
+    code: text("code").notNull().unique(), // Make code unique
     description: text("description"),
     category: text("category").notNull(),
     level: levelTypeEnum("level"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [
-    index("subject_name_idx").on(table.name),
-    index("subject_category_idx").on(table.category),
-    index("subject_level_idx").on(table.level),
-  ]
+  (table) => ({
+    // Add any additional indexes or constraints here
+    shortTagIdx: uniqueIndex("short_tag_idx").on(table.short_tag),
+    codeIdx: uniqueIndex("code_idx").on(table.code),
+  })
 );
 
 // ===============================

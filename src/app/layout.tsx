@@ -10,7 +10,7 @@ import { Toaster } from 'sonner'
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Luta-App - Transform Your Learning Journey",
+  title: "Luta-Zed - Transform Your Learning Journey",
   description: "Interactive e-learning platform with AI-powered tutoring",
 };
 

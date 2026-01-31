@@ -1,5 +1,5 @@
 {
-  "id": "f6c34e55-4dbc-4124-b4e3-608dba0ebee5",
+  "id": "c9a8c833-9382-488f-bc10-ec8f497ed28c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -242,6 +242,18 @@
           "primaryKey": false,
           "notNull": true
         },
+        "short_tag": {
+          "name": "short_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "description": {
           "name": "description",
           "type": "text",
@@ -277,47 +289,32 @@
         }
       },
       "indexes": {
-        "subject_name_idx": {
-          "name": "subject_name_idx",
+        "short_tag_idx": {
+          "name": "short_tag_idx",
           "columns": [
             {
-              "expression": "name",
+              "expression": "short_tag",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "subject_category_idx": {
-          "name": "subject_category_idx",
+        "code_idx": {
+          "name": "code_idx",
           "columns": [
             {
-              "expression": "category",
+              "expression": "code",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "subject_level_idx": {
-          "name": "subject_level_idx",
-          "columns": [
-            {
-              "expression": "level",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -325,7 +322,15 @@
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "subjects_code_unique": {
+          "name": "subjects_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
