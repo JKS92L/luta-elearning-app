@@ -1,4 +1,4 @@
-// src/components/subjects/SubjectsGrid.tsx (Updated)
+// src/components/subjects/SubjectsGrid.tsx
 import { Subject } from "@/lib/db/schema";
 import SubjectCard from "./SubjectCard";
 import { SubjectCardSkeleton } from "./SubjectCardSkeleton";

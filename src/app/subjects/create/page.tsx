@@ -1,10 +1,50 @@
 // src/app/subjects/create/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LevelType } from "@/lib/db/schema";
-import { useAuth } from "./../../../providers/auth-provider";
+import { LevelType, CurriculumType } from "@/lib/db/schema";
+import { useAuth } from "@/providers/auth-provider";
+import { toast } from "sonner";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  BookOpen,
+  Hash,
+  Tag,
+  Layers,
+  GraduationCap,
+  Info,
+  Sparkles,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  Bookmark,
+  Check,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldLabel,
+  FieldGroup,
+  FieldError,
+  FieldDescription,
+  FieldSeparator,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 // Define allowed roles
 const ALLOWED_ROLES = [
@@ -13,140 +53,56 @@ const ALLOWED_ROLES = [
   "SYSTEM_DEVELOPER",
   "TEACHER",
   "LECTURER",
-  "CONTENT_CREATOR",
+];
+
+// Common categories
+const CATEGORY_SUGGESTIONS = [
+  "Sciences",
+  "Mathematics",
+  "Humanities",
+  "Languages",
+  "Arts",
+  "Technology",
+  "Business",
+  "Social Sciences",
+  "Health Sciences",
+  "Vocational",
+  "Natural Sciences",
 ];
 
 export default function CreateSubjectPage() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
-  const [formData, setFormData] = useState({
-    name: "",
-    short_tag: "",
-    code: "",
-    description: "",
-    category: "",
-    level: "" as keyof typeof LevelType | "",
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const { user, isLoading: authLoading } = useAuth();
 
   // Check authorization
   useEffect(() => {
-    if (!isLoading) {
+    if (!authLoading) {
       if (!user) {
         router.push("/login");
         return;
       }
       
       if (!user.role || !ALLOWED_ROLES.includes(user.role)) {
+        toast.error("You don't have permission to create subjects");
         router.push("/subjects");
         return;
       }
     }
-  }, [user, isLoading, router]);
+  }, [user, authLoading, router]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    // Auto-generate short_tag from name if name changes and short_tag is empty
-    if (name === "name" && !formData.short_tag) {
-      const generatedShortTag = value
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-        .replace(/\s+/g, '_') // Replace spaces with underscores
-        .substring(0, 20); // Limit length
-      
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        short_tag: generatedShortTag
-      }));
-      return;
-    }
-    
-    // Auto-generate code from short_tag if short_tag changes and code is empty
-    if (name === "short_tag" && !formData.code) {
-      const generatedCode = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        code: generatedCode
-      }));
-      return;
-    }
-    
-    // For code input, auto-uppercase
-    if (name === "code") {
-      setFormData(prev => ({
-        ...prev,
-        code: value.toUpperCase().replace(/[^A-Z0-9]/g, '')
-      }));
-      return;
-    }
-    
-    // For short_tag input, ensure lowercase with underscores
-    if (name === "short_tag") {
-      setFormData(prev => ({
-        ...prev,
-        short_tag: value.toLowerCase().replace(/[^a-z0-9_]/g, '')
-      }));
-      return;
-    }
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const validateForm = () => {
-    const errors: string[] = [];
-    
-    if (!formData.name.trim()) errors.push("Name is required");
-    if (!formData.short_tag.trim()) errors.push("Short tag is required");
-    if (!formData.code.trim()) errors.push("Code is required");
-    if (!formData.category.trim()) errors.push("Category is required");
-    
-    if (formData.short_tag && !/^[a-z0-9_]+$/.test(formData.short_tag)) {
-      errors.push("Short tag can only contain lowercase letters, numbers, and underscores");
-    }
-    
-    if (formData.code && !/^[A-Z0-9]+$/.test(formData.code)) {
-      errors.push("Code can only contain uppercase letters and numbers");
-    }
-    
-    if (formData.short_tag.length > 20) {
-      errors.push("Short tag must be 20 characters or less");
-    }
-    
-    if (formData.code.length > 10) {
-      errors.push("Code must be 10 characters or less");
-    }
-    
-    return errors;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    
-    const validationErrors = validateForm();
-    if (validationErrors.length > 0) {
-      setError(validationErrors.join(". "));
-      return;
-    }
-    
-    setSubmitting(true);
-
+  const handleSubmit = async (values: any) => {
     try {
+      // Clean up data before sending
+      const payload = {
+        ...values,
+        level: values.level === "not_specified" ? null : values.level,
+        curriculum_type: values.curriculum_type === "not_specified" ? null : values.curriculum_type,
+      };
+
       const response = await fetch("/api/subjects", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -156,284 +112,777 @@ export default function CreateSubjectPage() {
 
       const newSubject = await response.json();
       
-      // Show success message
-      setSuccess(`Subject "${newSubject.name}" created successfully!`);
-      
-      // Reset form
-      setFormData({
-        name: "",
-        short_tag: "",
-        code: "",
-        description: "",
-        category: "",
-        level: "" as keyof typeof LevelType | "",
+      toast.success("Subject created successfully!", {
+        description: `"${newSubject.name}" has been added to the system.`,
       });
-      
-      // Redirect after delay
+
+      // Redirect after a brief delay
       setTimeout(() => {
         router.push("/subjects");
         router.refresh();
       }, 1500);
       
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setSubmitting(false);
+    } catch (error) {
+      toast.error("Failed to create subject", {
+        description: error instanceof Error ? error.message : "Please try again",
+      });
+      throw error;
     }
   };
 
-  if (isLoading) {
+  const [formData, setFormData] = React.useState({
+    name: "",
+    short_tag: "",
+    code: "",
+    curriculum_type: "not_specified",
+    category: "",
+    level: "not_specified",
+  });
+
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const handleInputChange = (field: string, value: string) => {
+    setErrors(prev => ({ ...prev, [field]: "" }));
+    
+    if (field === "name" && !formData.short_tag) {
+      const generatedShortTag = value
+        .replace(/[^a-zA-Z0-9\s]/g, '') // Allow uppercase letters
+        .replace(/\s+/g, '_')
+        .substring(0, 20)
+        .toUpperCase(); // Convert to uppercase
+      
+      setFormData(prev => ({
+        ...prev,
+        name: value,
+        short_tag: generatedShortTag
+      }));
+      return;
+    }
+    
+    if (field === "short_tag") {
+      const cleanValue = value.toUpperCase().replace(/[^A-Z0-9_]/g, ''); // Uppercase, allow numbers and underscore
+      if (!formData.code) {
+        const generatedCode = cleanValue.replace(/[^A-Z0-9]/g, '');
+        setFormData(prev => ({
+          ...prev,
+          short_tag: cleanValue,
+          code: generatedCode
+        }));
+        return;
+      }
+      setFormData(prev => ({ ...prev, short_tag: cleanValue }));
+      return;
+    }
+    
+    if (field === "code") {
+      const cleanValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      setFormData(prev => ({ ...prev, code: cleanValue }));
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) newErrors.name = "Subject name is required";
+    if (formData.name.length > 100) newErrors.name = "Name must be less than 100 characters";
+    
+    if (!formData.short_tag.trim()) newErrors.short_tag = "Short tag is required";
+    if (!/^[A-Z0-9_]+$/.test(formData.short_tag)) newErrors.short_tag = "Only uppercase letters, numbers, and underscores allowed";
+    if (formData.short_tag.length > 20) newErrors.short_tag = "Must be 20 characters or less";
+    
+    if (!formData.code.trim()) newErrors.code = "Subject code is required";
+    if (!/^[A-Z0-9]+$/.test(formData.code)) newErrors.code = "Only uppercase letters and numbers allowed";
+    if (formData.code.length > 10) newErrors.code = "Must be 10 characters or less";
+    
+    if (!formData.category.trim()) newErrors.category = "Category is required";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error("Please fix the errors in the form");
+      return;
+    }
+    
+    setIsSubmitting(true);
+
+    try {
+      await handleSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Calculate form completion
+  const getFieldCompletion = () => {
+    const fields = [
+      { 
+        key: 'name', 
+        label: 'Name', 
+        isValid: formData.name.trim().length > 0 && formData.name.length <= 100,
+        required: true 
+      },
+      { 
+        key: 'short_tag', 
+        label: 'Short Tag', 
+        isValid: formData.short_tag.trim().length > 0 && 
+                 formData.short_tag.length <= 20 && 
+                 /^[A-Z0-9_]+$/.test(formData.short_tag),
+        required: true 
+      },
+      { 
+        key: 'code', 
+        label: 'Code', 
+        isValid: formData.code.trim().length > 0 && 
+                 formData.code.length <= 10 && 
+                 /^[A-Z0-9]+$/.test(formData.code),
+        required: true 
+      },
+      { 
+        key: 'category', 
+        label: 'Category', 
+        isValid: formData.category.trim().length > 0,
+        required: true 
+      },
+      { 
+        key: 'level', 
+        label: 'Level', 
+        isValid: formData.level !== 'not_specified',
+        required: false 
+      },
+      { 
+        key: 'curriculum_type', 
+        label: 'Curriculum Type', 
+        isValid: formData.curriculum_type !== 'not_specified',
+        required: false 
+      },
+    ];
+
+    const requiredFields = fields.filter(f => f.required);
+    const completedRequired = requiredFields.filter(f => f.isValid).length;
+    const totalCompletion = fields.filter(f => f.isValid).length;
+    
+    return {
+      fields,
+      requiredCompletion: requiredFields.length > 0 ? 
+        Math.round((completedRequired / requiredFields.length) * 100) : 0,
+      totalCompletion: fields.length > 0 ? 
+        Math.round((totalCompletion / fields.length) * 100) : 0,
+    };
+  };
+
+  const completion = getFieldCompletion();
+
+  if (authLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
 
   if (!user || !user.role || !ALLOWED_ROLES.includes(user.role)) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Create New Subject</h1>
-            <p className="text-gray-600 mt-2">
-              Add a new subject to the system. All fields marked with * are required.
-            </p>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b border-border">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/subjects"
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+              </Link>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                  <BookOpen className="h-8 w-8 text-red-400" />
+                  Create New Subject
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Add a new subject to organize courses and resources
+                </p>
+              </div>
+            </div>
+            
+            <Button
+              variant="outline"
+              onClick={() => router.push("/subjects")}
+            >
+              View All Subjects
+            </Button>
           </div>
-          
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                {success}
-              </div>
-            </div>
-          )}
-          
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                {error}
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Subject Name *
-              </label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={formData.name}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="e.g., Mathematics, Physics, Chemistry"
-                maxLength={100}
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Full name of the subject
-              </p>
-            </div>
-
-            {/* Short Tag Field */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Short Tag *
-                </label>
-                <span className="text-xs text-gray-500">
-                  {formData.short_tag.length}/20
-                </span>
-              </div>
-              <input
-                type="text"
-                name="short_tag"
-                required
-                value={formData.short_tag}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-mono"
-                placeholder="e.g., math, physics, chem"
-                maxLength={20}
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Used for URLs and references. Lowercase letters, numbers, and underscores only.
-              </p>
-            </div>
-
-            {/* Code Field */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Subject Code *
-                </label>
-                <span className="text-xs text-gray-500">
-                  {formData.code.length}/10
-                </span>
-              </div>
-              <input
-                type="text"
-                name="code"
-                required
-                value={formData.code}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors font-mono uppercase"
-                placeholder="e.g., MATH101, PHY201"
-                maxLength={10}
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Unique identifier for the subject. Uppercase letters and numbers only.
-              </p>
-            </div>
-
-            {/* Description Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Describe the subject content, objectives, and key topics..."
-                maxLength={500}
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Optional detailed description of the subject
-              </p>
-            </div>
-
-            {/* Category Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category *
-              </label>
-              <input
-                type="text"
-                name="category"
-                required
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="e.g., Sciences, Humanities, Languages, Arts"
-                list="category-suggestions"
-              />
-              <datalist id="category-suggestions">
-                <option value="Sciences" />
-                <option value="Mathematics" />
-                <option value="Humanities" />
-                <option value="Languages" />
-                <option value="Arts" />
-                <option value="Technology" />
-                <option value="Business" />
-                <option value="Social Sciences" />
-                <option value="Health Sciences" />
-                <option value="Vocational" />
-              </datalist>
-              <p className="mt-1 text-sm text-gray-500">
-                Main category or field of study
-              </p>
-            </div>
-
-            {/* Level Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Level
-              </label>
-              <select
-                name="level"
-                value={formData.level}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              >
-                <option value="">Select a level (optional)</option>
-                {Object.entries(LevelType).map(([key, value]) => (
-                  <option key={key} value={key}>
-                    {key.charAt(0) + key.slice(1).toLowerCase().replace(/_/g, ' ')}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-sm text-gray-500">
-                Educational level for this subject
-              </p>
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={() => router.push("/subjects")}
-                className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-sm hover:shadow"
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Creating...
-                  </span>
-                ) : (
-                  "Create Subject"
-                )}
-              </button>
-            </div>
-          </form>
         </div>
-        
-        {/* Information Card */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Tips for creating subjects:</h3>
-          <ul className="space-y-2 text-blue-800">
-            <li className="flex items-start">
-              <svg className="w-5 h-5 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span><strong>Short Tag:</strong> Use lowercase with underscores (e.g., "advanced_math")</span>
-            </li>
-            <li className="flex items-start">
-              <svg className="w-5 h-5 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span><strong>Code:</strong> Use uppercase letters and numbers (e.g., "MATH101")</span>
-            </li>
-            <li className="flex items-start">
-              <svg className="w-5 h-5 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span><strong>Category:</strong> Choose a broad category that groups similar subjects</span>
-            </li>
-            <li className="flex items-start">
-              <svg className="w-5 h-5 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span>Both <strong>Short Tag</strong> and <strong>Code</strong> must be unique across all subjects</span>
-            </li>
-          </ul>
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Form */}
+          <div className="lg:col-span-2">
+            <Card className="border-border">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-red-400" />
+                      Subject Details
+                    </CardTitle>
+                    <CardDescription>
+                      All fields marked with * are required
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className={cn(
+                    "text-xs font-medium",
+                    completion.requiredCompletion === 100 
+                      ? "bg-green-500/10 text-green-400 border-green-500/20"
+                      : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  )}>
+                    {completion.requiredCompletion === 100 ? "✓ Ready" : `${completion.requiredCompletion}% Complete`}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <form
+                  id="subject-form"
+                  onSubmit={handleFormSubmit}
+                  className="space-y-6"
+                >
+                  <FieldGroup>
+                    {/* Name Field */}
+                    <Field data-invalid={!!errors.name}>
+                      <FieldLabel htmlFor="name">
+                        Subject Name *
+                      </FieldLabel>
+                      <Input
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onBlur={() => {
+                          if (!formData.name.trim()) {
+                            setErrors(prev => ({ ...prev, name: "Subject name is required" }));
+                          }
+                        }}
+                        onChange={(e) => handleInputChange("name", e.target.value)}
+                        aria-invalid={!!errors.name}
+                        placeholder="Mathematics, Physics, Chemistry"
+                      />
+                      <FieldError errors={errors.name ? [{ message: errors.name }] : []} />
+                      <FieldDescription>
+                        Full name of the subject
+                      </FieldDescription>
+                    </Field>
+
+                    {/* Short Tag Field */}
+                    <Field data-invalid={!!errors.short_tag}>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel htmlFor="short_tag">
+                          Short Tag *
+                        </FieldLabel>
+                        <span className={cn(
+                          "text-xs",
+                          formData.short_tag.length > 20 ? "text-red-400" : "text-muted-foreground"
+                        )}>
+                          {formData.short_tag.length}/20
+                        </span>
+                      </div>
+                      <Input
+                        id="short_tag"
+                        name="short_tag"
+                        value={formData.short_tag}
+                        onBlur={() => {
+                          if (!formData.short_tag.trim()) {
+                            setErrors(prev => ({ ...prev, short_tag: "Short tag is required" }));
+                          }
+                        }}
+                        onChange={(e) => handleInputChange("short_tag", e.target.value)}
+                        aria-invalid={!!errors.short_tag}
+                        placeholder="MATH, PHYSICS, CHEM"
+                        maxLength={20}
+                        className="font-mono uppercase"
+                      />
+                      <FieldError errors={errors.short_tag ? [{ message: errors.short_tag }] : []} />
+                      <FieldDescription>
+                        Used for URLs and references. Uppercase letters, numbers, and underscores only.
+                      </FieldDescription>
+                    </Field>
+
+                    {/* Code Field */}
+                    <Field data-invalid={!!errors.code}>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel htmlFor="code">
+                          Subject Code *
+                        </FieldLabel>
+                        <span className={cn(
+                          "text-xs",
+                          formData.code.length > 10 ? "text-red-400" : "text-muted-foreground"
+                        )}>
+                          {formData.code.length}/10
+                        </span>
+                      </div>
+                      <Input
+                        id="code"
+                        name="code"
+                        value={formData.code}
+                        onBlur={() => {
+                          if (!formData.code.trim()) {
+                            setErrors(prev => ({ ...prev, code: "Subject code is required" }));
+                          }
+                        }}
+                        onChange={(e) => handleInputChange("code", e.target.value)}
+                        aria-invalid={!!errors.code}
+                        placeholder="4024, 7030, 4027"
+                        maxLength={10}
+                        className="font-mono uppercase"
+                      />
+                      <FieldError errors={errors.code ? [{ message: errors.code }] : []} />
+                      <FieldDescription>
+                        Unique identifier for the subject. LNumbers as they appear on ECZ Exam timetable.
+                      </FieldDescription>
+                    </Field>
+
+                    <FieldSeparator />
+
+                    {/* Category Field */}
+                    <Field data-invalid={!!errors.category}>
+                      <FieldLabel htmlFor="category">
+                        Category *
+                      </FieldLabel>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value) => handleInputChange("category", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CATEGORY_SUGGESTIONS.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="mt-2">
+                        <Input
+                          value={formData.category}
+                          onChange={(e) => handleInputChange("category", e.target.value)}
+                          placeholder="Or type a custom category"
+                          list="category-suggestions"
+                        />
+                        <datalist id="category-suggestions">
+                          {CATEGORY_SUGGESTIONS.map((category) => (
+                            <option key={category} value={category} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <FieldError errors={errors.category ? [{ message: errors.category }] : []} />
+                      <FieldDescription>
+                        Main category or field of study
+                      </FieldDescription>
+                    </Field>
+
+                    {/* Level Field */}
+                    <Field>
+                      <FieldLabel htmlFor="level">
+                        Level
+                      </FieldLabel>
+                      <Select
+                        value={formData.level}
+                        onValueChange={(value) => handleInputChange("level", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a level (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="not_specified">Not specified</SelectItem>
+                          {Object.entries(LevelType).map(([key, value]) => (
+                            <SelectItem key={key} value={value}>
+                              <div className="flex items-center gap-2">
+                                <GraduationCap className="h-4 w-4" />
+                                {key.charAt(0) + key.slice(1).toLowerCase().replace(/_/g, ' ')}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        Educational level for this subject
+                      </FieldDescription>
+                    </Field>
+
+                    {/* Curriculum Type Field */}
+                    <Field>
+                      <FieldLabel htmlFor="curriculum_type">
+                        Curriculum Type
+                      </FieldLabel>
+                      <Select
+                        value={formData.curriculum_type}
+                        onValueChange={(value) => handleInputChange("curriculum_type", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a curriculum type (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="not_specified">Not specified</SelectItem>
+                          {Object.entries(CurriculumType).map(([key, value]) => (
+                            <SelectItem key={key} value={value}>
+                              <div className="flex items-center gap-2">
+                                <Bookmark className="h-4 w-4" />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {key.split('_').map(word => 
+                                      word.charAt(0) + word.slice(1).toLowerCase()
+                                    ).join(' ')}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {value.toLowerCase().replace(/_/g, ' ')}
+                                  </span>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        Type of curriculum framework used for this subject
+                      </FieldDescription>
+                    </Field>
+
+                    {/* Form Actions */}
+                    <Field>
+                      <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-border">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => router.push("/subjects")}
+                          disabled={isSubmitting}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={isSubmitting || completion.requiredCompletion < 100}
+                          className={cn(
+                            "flex-1",
+                            completion.requiredCompletion < 100 
+                              ? "bg-muted text-muted-foreground cursor-not-allowed"
+                              : "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600"
+                          )}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Creating...
+                            </>
+                          ) : completion.requiredCompletion < 100 ? (
+                            "Complete Required Fields"
+                          ) : (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Create Subject
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </Field>
+                  </FieldGroup>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Information Card */}
+            <Card className="border-border bg-gradient-to-br from-red-500/5 to-transparent">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Info className="h-4 w-4 text-red-400" />
+                  Best Practices
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  {[
+                    {
+                      icon: Tag,
+                      title: "Short Tag",
+                      description: "Use uppercase with underscores (e.g., 'ADVANCED_MATH')",
+                    },
+                    {
+                      icon: Hash,
+                      title: "Subject Code",
+                      description: "Use uppercase letters and numbers (e.g., 'MATH101')",
+                    },
+                    {
+                      icon: Layers,
+                      title: "Category",
+                      description: "Choose a broad category that groups similar subjects",
+                    },
+                    {
+                      icon: Bookmark,
+                      title: "Curriculum Type",
+                      description: "Select the educational framework used for this subject",
+                    },
+                    {
+                      icon: AlertCircle,
+                      title: "Important",
+                      description: "Both Short Tag and Code must be unique across all subjects",
+                    },
+                  ].map((item, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <div className="h-6 w-6 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <item.icon className="h-3 w-3 text-red-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{item.title}</h4>
+                        <p className="text-xs text-muted-foreground">{item.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Preview Card */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="text-sm">Subject Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  {[
+                    { label: "Name", value: formData.name || "Not set", valid: !!formData.name.trim() },
+                    { label: "Short Tag", value: formData.short_tag || "---", valid: !!formData.short_tag.trim() && /^[A-Z0-9_]+$/.test(formData.short_tag) },
+                    { label: "Code", value: formData.code || "---", valid: !!formData.code.trim() && /^[A-Z0-9]+$/.test(formData.code) },
+                    { label: "Category", value: formData.category || "Not set", valid: !!formData.category.trim() },
+                  ].map((item, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "h-3 w-3 rounded-full flex items-center justify-center",
+                          item.valid 
+                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                            : "bg-red-500/20 text-red-400 border border-red-500/30"
+                        )}>
+                          {item.valid ? (
+                            <Check className="h-2 w-2" />
+                          ) : (
+                            <X className="h-2 w-2" />
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">{item.label}</span>
+                      </div>
+                      <span className={cn(
+                        "text-xs font-medium truncate max-w-[150px]",
+                        item.label === "Code" && "font-mono bg-red-500/10 text-red-400 px-2 py-0.5 rounded",
+                        item.label === "Short Tag" && "font-mono bg-muted px-2 py-0.5 rounded"
+                      )}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                
+                {formData.level && formData.level !== "not_specified" && (
+                  <Alert className="bg-blue-500/10 border-blue-500/20">
+                    <GraduationCap className="h-4 w-4 text-blue-400" />
+                    <AlertDescription className="text-xs">
+                      This subject is tagged for{" "}
+                      <span className="font-medium">
+                        {formData.level.toLowerCase().replace('_', ' ')}
+                      </span>{" "}
+                      level
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {formData.curriculum_type && formData.curriculum_type !== "not_specified" && (
+                  <Alert className="bg-green-500/10 border-green-500/20">
+                    <Bookmark className="h-4 w-4 text-green-400" />
+                    <AlertDescription className="text-xs">
+                      Curriculum type:{" "}
+                      <span className="font-medium">
+                        {Object.entries(CurriculumType).find(([_, value]) => 
+                          value === formData.curriculum_type
+                        )?.[0].split('_').map(word => 
+                          word.charAt(0) + word.slice(1).toLowerCase()
+                        ).join(' ')}
+                      </span>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Field Requirements Card */}
+            <Card className="border-border">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Field Requirements</CardTitle>
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "text-xs",
+                      completion.requiredCompletion === 100 
+                        ? "bg-green-500/10 text-green-400 border-green-500/20"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    )}
+                  >
+                    {completion.requiredCompletion}% Complete
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Progress Bars */}
+                  <div className="space-y-3">
+                    {completion.fields.map((field) => (
+                      <div key={field.key} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              "h-4 w-4 rounded-full flex items-center justify-center",
+                              field.isValid 
+                                ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                : "bg-red-500/20 text-red-400 border border-red-500/30"
+                            )}>
+                              {field.isValid ? (
+                                <Check className="h-2 w-2" />
+                              ) : (
+                                <X className="h-2 w-2" />
+                              )}
+                            </div>
+                            <span className={cn(
+                              "text-xs",
+                              field.isValid ? "text-foreground" : "text-muted-foreground"
+                            )}>
+                              {field.label}
+                            </span>
+                            {field.required && (
+                              <Badge variant="outline" className="h-4 px-1 text-[10px]">
+                                Required
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {field.key === 'name' && (
+                              <span className={cn(
+                                "text-xs",
+                                formData.name.length > 100 ? "text-red-400" : 
+                                formData.name.length > 0 ? "text-green-400" : "text-muted-foreground"
+                              )}>
+                                {formData.name.length}/100
+                              </span>
+                            )}
+                            {field.key === 'short_tag' && (
+                              <span className={cn(
+                                "text-xs",
+                                formData.short_tag.length > 20 ? "text-red-400" : 
+                                formData.short_tag.length > 0 ? "text-green-400" : "text-muted-foreground"
+                              )}>
+                                {formData.short_tag.length}/20
+                              </span>
+                            )}
+                            {field.key === 'code' && (
+                              <span className={cn(
+                                "text-xs",
+                                formData.code.length > 10 ? "text-red-400" : 
+                                formData.code.length > 0 ? "text-green-400" : "text-muted-foreground"
+                              )}>
+                                {formData.code.length}/10
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Progress bar for character-limited fields */}
+                        {(field.key === 'name' || field.key === 'short_tag' || field.key === 'code') && (
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-300",
+                                field.key === 'name' && formData.name.length > 100 ? "bg-red-400" :
+                                field.key === 'short_tag' && formData.short_tag.length > 20 ? "bg-red-400" :
+                                field.key === 'code' && formData.code.length > 10 ? "bg-red-400" :
+                                field.isValid ? "bg-green-400" : "bg-blue-400"
+                              )}
+                              style={{
+                                width: field.key === 'name' 
+                                  ? `${Math.min((formData.name.length / 100) * 100, 100)}%`
+                                  : field.key === 'short_tag'
+                                    ? `${Math.min((formData.short_tag.length / 20) * 100, 100)}%`
+                                    : field.key === 'code'
+                                      ? `${Math.min((formData.code.length / 10) * 100, 100)}%`
+                                      : field.isValid ? '100%' : '0%'
+                              }}
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Validation hints */}
+                        {!field.isValid && (
+                          <div className="text-xs text-muted-foreground pl-6">
+                            {field.key === 'name' && (
+                              <span>Enter a subject name (max 100 characters)</span>
+                            )}
+                            {field.key === 'short_tag' && (
+                              <span>Uppercase letters, numbers, underscores only (max 20)</span>
+                            )}
+                            {field.key === 'code' && (
+                              <span>Uppercase letters and numbers only (max 10)</span>
+                            )}
+                            {field.key === 'category' && (
+                              <span>Select or enter a category</span>
+                            )}
+                            {field.key === 'level' && (
+                              <span>Optional: Select an educational level</span>
+                            )}
+                            {field.key === 'curriculum_type' && (
+                              <span>Optional: Select a curriculum type</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Overall Completion */}
+                  <div className="pt-4 border-t border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">Required Fields</span>
+                      <span className="text-xs font-medium">
+                        {completion.fields.filter(f => f.required && f.isValid).length}/
+                        {completion.fields.filter(f => f.required).length} completed
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-400 rounded-full transition-all duration-300"
+                        style={{ width: `${completion.requiredCompletion}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

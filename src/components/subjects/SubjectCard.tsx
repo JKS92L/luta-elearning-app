@@ -1,165 +1,232 @@
 // src/components/subjects/SubjectCard.tsx
 "use client";
 
+import { formatCurriculumType, getCurriculumTypeBadgeColor, getLevelDisplayName } from "@/lib/utils/subject-utils";
 import { Subject } from "@/lib/db/schema";
+import { Bookmark, GraduationCap, Layers, Hash, Edit, Trash2, Eye } from "lucide-react";
 import Link from "next/link";
-import { Copy, Check, Edit2, Trash2, Calendar, Hash, Tag } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 interface SubjectCardProps {
   subject: Subject;
   onDelete: (id: string) => void;
-  canEdit: boolean;
-  canDelete: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export default function SubjectCard({
   subject,
   onDelete,
-  canEdit,
-  canDelete,
+  canEdit = false,
+  canDelete = false,
 }: SubjectCardProps) {
-  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const handleCopy = (text: string, field: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    toast.success(`${label} copied to clipboard!`);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
-
-  const handleDelete = () => {
-    if (confirm(`Are you sure you want to delete "${subject.name}"? This action cannot be undone.`)) {
+  const handleDeleteClick = () => {
+    if (window.confirm(`Are you sure you want to delete "${subject.name}"? This action cannot be undone.`)) {
       onDelete(subject.id);
     }
   };
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
   return (
-    <div className="group relative bg-card border border-border rounded-xl p-6 hover:border-red-500/30 hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300">
-      {/* Gradient accent on hover */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-600/0 via-red-600/0 to-red-600/0 group-hover:from-red-600/5 group-hover:via-red-600/2 group-hover:to-red-600/0 transition-all duration-500" />
+    <div 
+      className="group relative border border-border rounded-xl p-5 
+                 hover:border-red-500/50 hover:shadow-2xl hover:shadow-red-500/20 
+                 transition-all duration-300 bg-card hover:bg-gradient-to-br 
+                 hover:from-card hover:to-red-500/5 cursor-pointer
+                 hover:-translate-y-1 hover:scale-[1.02] transform-gpu"
+      onClick={(e) => {
+        // Only navigate if the click wasn't on the dropdown or its trigger
+        if (!(e.target as HTMLElement).closest('.dropdown-trigger')) {
+          window.location.href = `/subjects/${subject.id}`;
+        }
+      }}
+    >
+      {/* Soft Glow Effect */}
+      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/0 via-red-500/5 to-red-500/0 
+                      opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 pointer-events-none" />
       
-      <div className="relative flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        {/* Main Content */}
-        <div className="flex-1 space-y-4">
-          {/* Header with title and badges */}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-xl font-semibold text-foreground group-hover:text-red-400 transition-colors duration-300">
-                {subject.name}
-              </h3>
-              
-              {/* Code badge */}
-              <div className="relative">
-                <button
-                  onClick={() => handleCopy(subject.code, "code", "Subject code")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors duration-200 group/badge"
-                >
-                  <Hash className="h-3.5 w-3.5" />
-                  <span className="text-sm font-mono font-medium tracking-tight">
-                    {subject.code}
-                  </span>
-                  <Copy className="h-3 w-3 opacity-0 group-hover/badge:opacity-100 transition-opacity" />
-                </button>
-                {copiedField === "code" && (
-                  <div className="absolute -top-1 -right-1">
-                    <Check className="h-4 w-4 text-green-400 animate-in zoom-in duration-200" />
-                  </div>
-                )}
+      {/* Card Header */}
+      <div className="mb-4 relative z-10">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-lg truncate text-foreground group-hover:text-red-400 transition-colors duration-300">
+              {subject.name}
+            </h3>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Hash className="h-3 w-3 flex-shrink-0" />
+                <code className="font-mono bg-muted px-1.5 py-0.5 rounded truncate max-w-[80px] transition-colors group-hover:bg-red-500/10">
+                  {subject.code}
+                </code>
               </div>
-              
-              {/* Short tag badge */}
-              <div className="relative">
-                <button
-                  onClick={() => handleCopy(subject.short_tag, "short_tag", "Short tag")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground hover:bg-muted/80 transition-colors duration-200 group/badge"
-                >
-                  <Tag className="h-3.5 w-3.5" />
-                  <span className="text-sm font-medium">
-                    {subject.short_tag}
-                  </span>
-                  <Copy className="h-3 w-3 opacity-0 group-hover/badge:opacity-100 transition-opacity" />
-                </button>
-                {copiedField === "short_tag" && (
-                  <div className="absolute -top-1 -right-1">
-                    <Check className="h-4 w-4 text-green-400 animate-in zoom-in duration-200" />
-                  </div>
-                )}
+              <div className="text-xs text-muted-foreground">
+                <span className="font-mono bg-muted px-1.5 py-0.5 rounded transition-colors group-hover:bg-red-500/10">
+                  {subject.short_tag}
+                </span>
               </div>
             </div>
-            
-            {/* Description */}
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {subject.description || "No description provided"}
-            </p>
           </div>
-
-          {/* Metadata badges */}
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              {subject.category}
-            </span>
-            
-            {subject.level && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                {subject.level.toLowerCase().replace('_', ' ')}
-              </span>
-            )}
-          </div>
-
-          {/* Timestamps */}
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>Created {formatDate(subject.createdAt)}</span>
+          
+          {/* Actions Dropdown */}
+          {(canEdit || canDelete) && (
+            <div 
+              className="dropdown-trigger"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsDropdownOpen(true);
+              }}
+            >
+              <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 
+                             transition-all duration-300 hover:bg-red-500/10 
+                             hover:text-red-400 active:opacity-100 
+                             focus:opacity-100 focus-within:opacity-100
+                             sm:opacity-0 sm:group-hover:opacity-100
+                             md:opacity-0 md:group-hover:opacity-100
+                             lg:opacity-0 lg:group-hover:opacity-100"
+                    onTouchStart={(e) => {
+                      // Show dropdown on touch devices immediately
+                      e.stopPropagation();
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-48 backdrop-blur-sm bg-card/95 border-border/50"
+                  onInteractOutside={() => setIsDropdownOpen(false)}
+                >
+                  <Link href={`/subjects/${subject.id}`} onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem 
+                      className="cursor-pointer hover:bg-red-500/10 focus:bg-red-500/10"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      <span>View Details</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  {canEdit && (
+                    <Link href={`/subjects/${subject.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuItem 
+                        className="cursor-pointer hover:bg-red-500/10 focus:bg-red-500/10"
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        <span>Edit Subject</span>
+                      </DropdownMenuItem>
+                    </Link>
+                  )}
+                  {canDelete && (
+                    <DropdownMenuItem
+                      className="cursor-pointer text-red-400 hover:text-red-300 
+                                hover:bg-red-500/10 focus:text-red-300 focus:bg-red-500/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick();
+                        setIsDropdownOpen(false);
+                      }}
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleDeleteClick();
+                        setIsDropdownOpen(false);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      <span>Delete Subject</span>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>Updated {formatDate(subject.updatedAt)}</span>
-            </div>
-            <div className="text-xs font-mono text-muted-foreground/60">
-              ID: {subject.id.substring(0, 8)}...
-            </div>
-          </div>
+          )}
         </div>
+        
+        {/* Category */}
+        <div className="flex items-center gap-2 mb-3">
+          <Layers className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 
+                            group-hover:text-red-400 transition-colors duration-300" />
+          <Badge 
+            variant="outline" 
+            className="text-xs font-normal truncate max-w-full 
+                      group-hover:border-red-500/50 group-hover:text-red-400 
+                      transition-colors duration-300"
+          >
+            {subject.category}
+          </Badge>
+        </div>
+      </div>
 
-        {/* Action buttons */}
-        {(canEdit || canDelete) && (
-          <div className="flex sm:flex-col gap-2">
-            {canEdit && (
-              <Link
-                href={`/subjects/edit/${subject.id}`}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 sm:px-3 sm:py-2 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors duration-200 group/edit"
-              >
-                <Edit2 className="h-4 w-4" />
-                <span className="sm:sr-only">Edit</span>
-              </Link>
-            )}
-            
-            {canDelete && (
-              <button
-                onClick={handleDelete}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 sm:px-3 sm:py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors duration-200 group/delete"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="sm:sr-only">Delete</span>
-              </button>
-            )}
-          </div>
+      {/* Level and Curriculum Badges */}
+      <div className="flex flex-wrap gap-2 mb-4 relative z-10">
+        {subject.level && (
+          <Badge 
+            variant="outline" 
+            className="bg-blue-500/10 text-blue-400 border-blue-500/20 
+                      flex items-center gap-1.5 text-xs group-hover:border-blue-400/50
+                      transition-colors duration-300"
+          >
+            <GraduationCap className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{getLevelDisplayName(subject.level)}</span>
+          </Badge>
+        )}
+        
+        {subject.curriculum_type && (
+          <Badge 
+            variant="outline" 
+            className={`${getCurriculumTypeBadgeColor(subject.curriculum_type)} 
+                      flex items-center gap-1.5 text-xs group-hover:brightness-110
+                      transition-all duration-300`}
+          >
+            <Bookmark className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{formatCurriculumType(subject.curriculum_type)}</span>
+          </Badge>
         )}
       </div>
 
-      {/* Hover glow effect */}
-      <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-red-500/10 transition-colors duration-300 pointer-events-none" />
+      {/* Footer with View Details */}
+      <div className="pt-3 border-t border-border group-hover:border-red-500/30 
+                      transition-colors duration-300 relative z-10">
+        <Link
+          href={`/subjects/${subject.id}`}
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground 
+                    hover:text-foreground group/view transition-all duration-300"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-1 bg-muted rounded group-hover/view:bg-red-500/10 
+                        group-hover/view:scale-110 transition-all duration-300">
+            <Eye className="h-3.5 w-3.5 transition-all duration-300 
+                          group-hover/view:translate-x-0.5 group-hover/view:text-red-400" />
+          </div>
+          <span className="relative">
+            View full details
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-red-400 
+                            group-hover/view:w-full transition-all duration-300" />
+          </span>
+        </Link>
+      </div>
+
+      {/* Mobile touch indicator */}
+      <div className="absolute bottom-4 right-4 sm:hidden">
+        <div className="h-6 w-6 rounded-full bg-red-500/10 flex items-center justify-center">
+          <MoreVertical className="h-3 w-3 text-red-400" />
+        </div>
+      </div>
     </div>
   );
 }

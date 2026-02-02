@@ -117,7 +117,7 @@ export async function PUT(
         name: body.name || existing.name,
         short_tag: body.short_tag !== undefined ? body.short_tag : existing.short_tag,
         code: body.code !== undefined ? body.code : existing.code,
-        description: body.description !== undefined ? body.description : existing.description,
+        curriculum_type: body.curriculum_type !== undefined ? body.curriculum_type : existing.curriculum_type,
         category: body.category || existing.category,
         level: body.level !== undefined ? body.level : existing.level,
         updatedAt: new Date(),

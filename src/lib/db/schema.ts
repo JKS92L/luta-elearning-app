@@ -38,6 +38,12 @@ export const LevelType = {
   SKILLS: "SKILLS",
 } as const;
 
+// Curriculum types enum
+export const CurriculumType = {
+  COMPETENCE_BASED_OUTCOME: "COMPETENCE_BASED_OUTCOME",
+  OBJECTIVE_BASED_OUTCOME: "OBJECTIVE_BASED_OUTCOME",
+} as const;
+
 // Create drizzle enums from our TypeScript enums
 function enumValues<T extends Record<string, string>>(obj: T) {
   return Object.values(obj) as [T[keyof T], ...T[keyof T][]];
@@ -45,6 +51,7 @@ function enumValues<T extends Record<string, string>>(obj: T) {
 
 export const userRoleEnum = pgEnum("user_role", enumValues(UserRole));
 export const levelTypeEnum = pgEnum("level_type", enumValues(LevelType));
+export const curriculumTypeEnum = pgEnum("curriculum_type", enumValues(CurriculumType));
 
 // ===============================
 // BETTER-AUTH CORE TABLES (UPDATED)
@@ -136,7 +143,7 @@ export const verification = pgTable(
 );
 
 // ===============================
-// SUBJECTS TABLE (NEW)
+// SUBJECTS TABLE (UPDATED)
 // ===============================
 
 export const subjects = pgTable(
@@ -146,16 +153,18 @@ export const subjects = pgTable(
       .primaryKey()
       .$defaultFn(() => createId()),
     name: text("name").notNull(),
-    short_tag: text("short_tag").notNull(),
-    code: text("code").notNull().unique(), // Make code unique
-    description: text("description"),
+    short_tag: text("short_tag").notNull(), // Changed to text for short_tag
+    code: text("code").notNull().unique(),
+    curriculum_type: curriculumTypeEnum("curriculum_type"), // Changed from description to curriculum_type
     category: text("category").notNull(),
     level: levelTypeEnum("level"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => ({
-    // Add any additional indexes or constraints here
     shortTagIdx: uniqueIndex("short_tag_idx").on(table.short_tag),
     codeIdx: uniqueIndex("code_idx").on(table.code),
   })
@@ -196,10 +205,8 @@ export const subjectsRelations = relations(subjects, () => ({
 // Export TypeScript types
 export type UserRoleType = (typeof UserRole)[keyof typeof UserRole];
 export type LevelTypeType = (typeof LevelType)[keyof typeof LevelType];
+export type CurriculumTypeType = (typeof CurriculumType)[keyof typeof CurriculumType];
 export type User = typeof user.$inferSelect;
 export type InsertUser = typeof user.$inferInsert;
 export type Subject = typeof subjects.$inferSelect;
 export type InsertSubject = typeof subjects.$inferInsert;
-
-// Export everything
-export * from "./schema";

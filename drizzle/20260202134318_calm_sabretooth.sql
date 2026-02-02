@@ -1,3 +1,4 @@
+CREATE TYPE "public"."curriculum_type" AS ENUM('COMPETENCE_BASED_OUTCOME', 'OBJECTIVE_BASED_OUTCOME');--> statement-breakpoint
 CREATE TYPE "public"."level_type" AS ENUM('PRIMARY', 'JUNIOR', 'SENIOR', 'COLLEGE', 'SKILLS');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('SYS_ADMIN', 'TEACHER', 'STUDENT', 'EDUCATION_RESEARCHER', 'LECTURER', 'GENERAL_USER', 'CONTENT_CREATOR', 'CLASS_LEAD', 'SYSTEM_DEVELOPER', 'CUSTOMER_RELATION');--> statement-breakpoint
 CREATE TABLE "account" (
@@ -33,7 +34,7 @@ CREATE TABLE "subjects" (
 	"name" text NOT NULL,
 	"short_tag" text NOT NULL,
 	"code" text NOT NULL,
-	"description" text,
+	"curriculum_type" "curriculum_type",
 	"category" text NOT NULL,
 	"level" "level_type",
 	"created_at" timestamp DEFAULT now() NOT NULL,

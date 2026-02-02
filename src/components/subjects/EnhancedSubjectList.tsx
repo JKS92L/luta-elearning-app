@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Subject } from "@/lib/db/schema";
+import { Subject, LevelType, CurriculumType } from "@/lib/db/schema"; // Added CurriculumType import
 import { useAuth } from "@/providers/auth-provider";
 import { SubjectsGrid } from "./SubjectGrid";
 import { SubjectsHeader } from "./SubjectHeader";
@@ -19,7 +19,7 @@ export function EnhancedSubjectList() {
   const [filters, setFilters] = useState<{
     category?: string;
     level?: string;
-    hasDescription?: boolean;
+    curriculum_type?: string;
   }>({});
   const [currentPage, setCurrentPage] = useState(1);
   const { user, isLoading: authLoading } = useAuth();
@@ -100,7 +100,7 @@ export function EnhancedSubjectList() {
           subject.code.toLowerCase().includes(searchLower) ||
           subject.short_tag.toLowerCase().includes(searchLower) ||
           subject.category.toLowerCase().includes(searchLower) ||
-          (subject.description && subject.description.toLowerCase().includes(searchLower)) ||
+          (subject.curriculum_type && subject.curriculum_type.toLowerCase().includes(searchLower)) ||
           (subject.level && subject.level.toLowerCase().includes(searchLower));
         
         if (!matchesSearch) return false;
@@ -116,10 +116,19 @@ export function EnhancedSubjectList() {
         return false;
       }
 
-      // Description filter
-      if (filters.hasDescription !== undefined) {
-        if (filters.hasDescription && !subject.description) return false;
-        if (!filters.hasDescription && subject.description) return false;
+      // Curriculum Type filter
+      if (filters.curriculum_type) {
+        if (filters.curriculum_type === "has_curriculum" && !subject.curriculum_type) {
+          return false;
+        }
+        if (filters.curriculum_type === "no_curriculum" && subject.curriculum_type) {
+          return false;
+        }
+        if (filters.curriculum_type !== "has_curriculum" && 
+            filters.curriculum_type !== "no_curriculum" && 
+            subject.curriculum_type !== filters.curriculum_type) {
+          return false;
+        }
       }
 
       return true;

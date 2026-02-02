@@ -1,8 +1,8 @@
 // src/components/subjects/FilterPanel.tsx
 "use client";
 
-import { LevelType } from "@/lib/db/schema";
-import { Filter, X } from "lucide-react";
+import { LevelType, CurriculumType } from "@/lib/db/schema";
+import { Filter, X, Bookmark } from "lucide-react";
 import { useState } from "react";
 
 interface FilterPanelProps {
@@ -10,16 +10,26 @@ interface FilterPanelProps {
   onFilterChange: (filters: {
     category?: string;
     level?: string;
-    hasDescription?: boolean;
+    curriculum_type?: string;
   }) => void;
 }
+
+// Helper function to format curriculum type for display (same as above)
+const formatCurriculumType = (curriculumType: string) => {
+  const displayNames: Record<string, string> = {
+    "COMPETENCE_BASED_OUTCOME": "Competence Based Outcome",
+    "OBJECTIVE_BASED_OUTCOME": "Objective Based Outcome",
+  };
+  
+  return displayNames[curriculumType] || curriculumType;
+};
 
 export function FilterPanel({ categories, onFilterChange }: FilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filters, setFilters] = useState({
     category: "",
     level: "",
-    hasDescription: "",
+    curriculum_type: "",
   });
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
@@ -29,16 +39,12 @@ export function FilterPanel({ categories, onFilterChange }: FilterPanelProps) {
     onFilterChange({
       category: newFilters.category || undefined,
       level: newFilters.level || undefined,
-      hasDescription: newFilters.hasDescription === "true" 
-        ? true 
-        : newFilters.hasDescription === "false" 
-          ? false 
-          : undefined,
+      curriculum_type: newFilters.curriculum_type || undefined,
     });
   };
 
   const clearFilters = () => {
-    setFilters({ category: "", level: "", hasDescription: "" });
+    setFilters({ category: "", level: "", curriculum_type: "" });
     onFilterChange({});
   };
 
@@ -110,26 +116,34 @@ export function FilterPanel({ categories, onFilterChange }: FilterPanelProps) {
                   >
                     <option value="">All Levels</option>
                     {Object.entries(LevelType).map(([key, value]) => (
-                      <option key={key} value={key}>
+                      <option key={key} value={value}>
                         {key.charAt(0) + key.slice(1).toLowerCase().replace(/_/g, ' ')}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Description Filter */}
+                {/* Curriculum Type Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Description
+                  <label className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <Bookmark className="h-4 w-4" />
+                    Curriculum Type
                   </label>
                   <select
-                    value={filters.hasDescription}
-                    onChange={(e) => handleFilterChange("hasDescription", e.target.value)}
+                    value={filters.curriculum_type}
+                    onChange={(e) => handleFilterChange("curriculum_type", e.target.value)}
                     className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:border-red-500 focus:ring-red-500/20"
                   >
-                    <option value="">Any</option>
-                    <option value="true">Has Description</option>
-                    <option value="false">No Description</option>
+                    <option value="">All Curriculum Types</option>
+                    <option value="has_curriculum">Has Curriculum Type</option>
+                    <option value="no_curriculum">No Curriculum Type</option>
+                    <optgroup label="Specific Types">
+                      {Object.entries(CurriculumType).map(([key, value]) => (
+                        <option key={key} value={value}>
+                          {formatCurriculumType(value)}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 

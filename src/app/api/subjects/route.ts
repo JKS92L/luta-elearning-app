@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
         name: body.name,
         short_tag: body.short_tag,
         code: body.code,
-        description: body.description || null,
+        curriculum_type: body.curriculum_type || null,
         category: body.category,
         level: body.level || null,
         createdAt: new Date(),

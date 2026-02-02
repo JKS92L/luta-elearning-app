@@ -1,5 +1,5 @@
 {
-  "id": "c9a8c833-9382-488f-bc10-ec8f497ed28c",
+  "id": "dde55218-a57b-4f85-af35-befc7a4fbf86",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -254,9 +254,10 @@
           "primaryKey": false,
           "notNull": true
         },
-        "description": {
-          "name": "description",
-          "type": "text",
+        "curriculum_type": {
+          "name": "curriculum_type",
+          "type": "curriculum_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
         },
@@ -478,6 +479,14 @@
     }
   },
   "enums": {
+    "public.curriculum_type": {
+      "name": "curriculum_type",
+      "schema": "public",
+      "values": [
+        "COMPETENCE_BASED_OUTCOME",
+        "OBJECTIVE_BASED_OUTCOME"
+      ]
+    },
     "public.level_type": {
       "name": "level_type",
       "schema": "public",

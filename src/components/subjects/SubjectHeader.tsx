@@ -1,4 +1,4 @@
-// src/components/subjects/SubjectsHeader.tsx (Updated)
+// src/components/subjects/SubjectsHeader.tsx
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,11 @@ interface SubjectsHeaderProps {
   description?: string;
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
-  onFilterChange?: (filters: any) => void;
+  onFilterChange?: (filters: {
+    category?: string;
+    level?: string;
+    curriculum_type?: string;
+  }) => void;
   showSearch?: boolean;
   showCreateButton?: boolean;
   categories?: string[];
